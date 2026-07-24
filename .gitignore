@@ -1,0 +1,22 @@
+# Raw BTS data is large and easily re-downloaded — don't commit it
+data/raw/*
+!data/raw/.gitkeep
+
+# Generated synthetic data (regeneratable via scripts)
+data/processed/*
+!data/processed/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env / secrets
+.env
+
+# Power BI temp files
+*.pbix.bak
+
+# OS
+.DS_Store
