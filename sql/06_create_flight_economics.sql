@@ -79,24 +79,24 @@ SELECT
 
     /*
     Synthetic operating-cost model:
-      $3,500 fixed cost per flight
-      $9.50 per mile
-      $18 per passenger
-      Additional disruption cost for arrival delays
+    $12,000 fixed cost per flight
+    $15.00 per flight mile
+    $22 per passenger
+    Additional disruption cost for arrival delays
     */
 
     ROUND(
         (
-            3500
-            + cf.distance * 9.50
-            + ss.passengers * 18
+            12000
+            + cf.distance * 15.00
+            + ss.passengers * 22
             + CASE
                 WHEN cf.arrival_delay >= 180 THEN 15000
                 WHEN cf.arrival_delay >= 120 THEN 9000
                 WHEN cf.arrival_delay >= 60 THEN 4500
                 WHEN cf.arrival_delay >= 15 THEN 1500
                 ELSE 0
-              END
+            END
         )::NUMERIC,
         2
     ) AS estimated_operating_cost,
@@ -106,9 +106,9 @@ SELECT
             ss.ticket_revenue
             -
             (
-                3500
-                + cf.distance * 9.50
-                + ss.passengers * 18
+                12000
+                + cf.distance * 15.00
+                + ss.passengers * 22
                 + CASE
                     WHEN cf.arrival_delay >= 180 THEN 15000
                     WHEN cf.arrival_delay >= 120 THEN 9000

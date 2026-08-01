@@ -113,12 +113,12 @@ def create_sales_records(flights: pd.DataFrame) -> pd.DataFrame:
     }
 
     base_fare = (
-        65
-        + flights["distance"] * 0.115
+        165
+        + flights["distance"] * 0.055
         + rng.normal(0, 18, len(flights))
     )
 
-    base_fare = np.maximum(base_fare, 55)
+    base_fare = np.maximum(base_fare, 120)
 
     for fare_class, parameters in fare_classes.items():
         passenger_count = np.floor(
@@ -169,7 +169,24 @@ def create_sales_records(flights: pd.DataFrame) -> pd.DataFrame:
         .astype(int)
         .values
     )
+    # Minimum fare floors prevent unrealistically low short-haul fares.
+    # These values are synthetic and intended to create more balanced
+    # route economics across different flight distances.
 
+    fare_floors = {
+        "Economy": 110.00,
+        "Premium Economy": 180.00,
+        "Business": 320.00,
+    }
+
+    sales["average_fare"] = np.maximum(
+        sales["average_fare"],
+        sales["fare_class"].map(fare_floors),
+    )
+
+    sales["average_fare"] = sales["average_fare"].round(2)
+
+    # Recalculate revenue after applying the fare floors.
     sales["ticket_revenue"] = (
         sales["passengers"] * sales["average_fare"]
     ).round(2)
