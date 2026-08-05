@@ -1,55 +1,67 @@
 -- ============================================================
 -- File: 04_create_commercial_subset.sql
 -- Purpose:
--- Create a focused commercial-flight subset containing
--- American, Delta, and United flights on sufficiently active
--- routes during 2024.
+-- Create a focused commercial subset containing completed
+-- 2024 flights operated by AA, DL, and UA on the 130
+-- highest-volume directional routes.
 -- ============================================================
 
 
 -- ------------------------------------------------------------
--- 1. Remove the existing table so the script is rerunnable
+-- 1. Remove the existing commercial subset
 -- ------------------------------------------------------------
 
 DROP TABLE IF EXISTS commercial_flights;
 
 
 -- ------------------------------------------------------------
--- 2. Create the commercial-flight subset
+-- 2. Rank routes by annual completed-flight volume and retain
+--    the 130 highest-volume directional routes
 -- ------------------------------------------------------------
 
 CREATE TABLE commercial_flights AS
-WITH eligible_routes AS (
+WITH route_volume AS (
     SELECT
         origin_airport,
-        destination_airport
+        destination_airport,
+        COUNT(*) AS annual_flights
     FROM flights
     WHERE carrier_code IN ('AA', 'DL', 'UA')
       AND flight_date >= DATE '2024-01-01'
       AND flight_date < DATE '2025-01-01'
-      AND cancelled = 0
-      AND diverted = 0
+      AND cancelled IS FALSE
+      AND diverted IS FALSE
     GROUP BY
         origin_airport,
         destination_airport
-    HAVING COUNT(*) >= 1000
+),
+top_routes AS (
+    SELECT
+        origin_airport,
+        destination_airport,
+        annual_flights
+    FROM route_volume
+    ORDER BY
+        annual_flights DESC,
+        origin_airport,
+        destination_airport
+    LIMIT 130
 )
-
 SELECT
     f.*
 FROM flights AS f
-INNER JOIN eligible_routes AS er
-    ON f.origin_airport = er.origin_airport
-   AND f.destination_airport = er.destination_airport
+INNER JOIN top_routes AS tr
+    ON f.origin_airport = tr.origin_airport
+   AND f.destination_airport = tr.destination_airport
 WHERE f.carrier_code IN ('AA', 'DL', 'UA')
   AND f.flight_date >= DATE '2024-01-01'
   AND f.flight_date < DATE '2025-01-01'
-  AND f.cancelled = 0
-  AND f.diverted = 0;
+  AND f.cancelled IS FALSE
+  AND f.diverted IS FALSE;
 
 
 -- ------------------------------------------------------------
--- 3. Add a primary key
+-- 3. Add primary key
 -- ------------------------------------------------------------
 
 ALTER TABLE commercial_flights
@@ -58,7 +70,7 @@ PRIMARY KEY (flight_id);
 
 
 -- ------------------------------------------------------------
--- 4. Add indexes used by later analysis
+-- 4. Add supporting indexes
 -- ------------------------------------------------------------
 
 CREATE INDEX idx_commercial_flights_date
@@ -78,33 +90,32 @@ ON commercial_flights (route);
 
 
 -- ------------------------------------------------------------
--- 5. Update PostgreSQL query-planning statistics
+-- 5. Update query-planning statistics
 -- ------------------------------------------------------------
 
 ANALYZE commercial_flights;
 
 
 -- ------------------------------------------------------------
--- 6. Validation
--- Expected result from the completed project:
--- 424,145 flights
--- 3 carriers
--- 130 routes
--- 2024-01-01 through 2024-12-31
+-- 6. Validate scope
 -- ------------------------------------------------------------
 
 SELECT
     COUNT(*) AS total_flights,
-    COUNT(DISTINCT carrier_code) AS carriers,
-    COUNT(DISTINCT route) AS routes,
+    COUNT(DISTINCT route) AS total_routes,
+    COUNT(DISTINCT carrier_code) AS total_carriers,
     MIN(flight_date) AS first_date,
     MAX(flight_date) AS last_date
 FROM commercial_flights;
 
 
+-- ------------------------------------------------------------
+-- 7. Confirm all 12 months are represented
+-- ------------------------------------------------------------
+
 SELECT
-    carrier_code,
-    COUNT(*) AS total_flights
+    flight_month,
+    COUNT(*) AS commercial_flights
 FROM commercial_flights
-GROUP BY carrier_code
-ORDER BY total_flights DESC;
+GROUP BY flight_month
+ORDER BY flight_month;
